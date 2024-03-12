@@ -1,0 +1,148 @@
+"""Code for a flask API to Create, Read, Update, Delete users"""
+
+import os
+from flask import Flask, request, jsonify
+from flask_restx import Api, Resource, fields
+from flaskext.mysql import MySQL
+
+#try:
+#    from flask_restplus import Api, Resource, fields
+#except ImportError:
+#    import werkzeug
+#    werkzeug.cached_property = werkzeug.utils.cached_property
+#    from flask_restplus import Api, Resource, fields
+
+app = Flask(__name__)
+api = Api(app, version = "1.0", title = "Resource Reservation", description = "API to manage the resource reservation in a 5GMETA MEC Server")
+
+mysql = MySQL()
+
+# MySQL configurations
+app.config["MYSQL_DATABASE_USER"] = "root"
+app.config["MYSQL_DATABASE_PASSWORD"] = os.getenv("db_root_password")
+app.config["MYSQL_DATABASE_DB"] = os.getenv("db_name")
+app.config["MYSQL_DATABASE_HOST"] = os.getenv("MYSQL_SERVICE_HOST")
+app.config["MYSQL_DATABASE_PORT"] = int(os.getenv("MYSQL_SERVICE_PORT"))
+mysql.init_app(app)
+
+name_space = api.namespace('main', description='Main API')
+
+user_model = api.model('User', {'name': fields.String(required = True, description="Name of the user", help="Name cannot be blank."), \
+                           'email': fields.String(required = True, description="E-mail of the user", help="Name cannot be blank."), \
+                           'pwd': fields.String(required = True, description="Password of the user", help="Name cannot be blank.")
+})
+
+@name_space.route("/")
+class MainClass(Resource):
+    def index():
+        """Function to test the functionality of the API"""
+        return "Hello, world!"
+
+@name_space.route("/create")
+class CategoryItem(Resource):
+    @api.expect(user_model)
+    def post(self):
+        """Function to create a user to the MySQL database"""
+        name = request.json["name"]
+        email = request.json["email"]
+        pwd = request.json["pwd"]
+        if name and email and pwd and request.method == "POST":
+            sql = "INSERT INTO users(user_name, user_email, user_password) " "VALUES(%s, %s, %s)"
+            data = (name, email, pwd)
+            try:
+                conn = mysql.connect()
+                cursor = conn.cursor()
+                cursor.execute(sql, data)
+                conn.commit()
+                cursor.close()
+                conn.close()
+                resp = jsonify("User created successfully!")
+                resp.status_code = 200
+                return resp
+            except Exception as exception:
+                return jsonify(str(exception))
+        else:
+            return jsonify("Please provide name, email and pwd")
+
+@name_space.route("/users")
+class CategoryItem(Resource):
+    def get(self):
+        """Function to retrieve all users from the MySQL database"""
+        try:
+            conn = mysql.connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users")
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            resp = jsonify(rows)
+            resp.status_code = 200
+            return resp
+        except Exception as exception:
+            return jsonify(str(exception))
+
+@name_space.route("/user/<int:user_id>")
+class CategoryItem(Resource):
+    @api.doc(params={ 'user_id': 'Specify the User Id to get the information'})
+    def get(self, user_id):
+        """Function to get information of a specific user in the MSQL database"""
+        try:
+            conn = mysql.connect()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE user_id=%s", user_id)
+            row = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            resp = jsonify(row)
+            resp.status_code = 200
+            return resp
+        except Exception as exception:
+            return jsonify(str(exception))
+
+@name_space.route("/update")
+class CategoryItem(Resource):
+    def post():
+        """Function to update a user in the MYSQL database"""
+        json = request.json
+        name = json["name"]
+        email = json["email"]
+        pwd = json["pwd"]
+        user_id = json["user_id"]
+        if name and email and pwd and user_id and request.method == "POST":
+            # save edits
+            sql = "UPDATE users SET user_name=%s, user_email=%s, " "user_password=%s WHERE user_id=%s"
+            data = (name, email, pwd, user_id)
+            try:
+                conn = mysql.connect()
+                cursor = conn.cursor()
+                cursor.execute(sql, data)
+                conn.commit()
+                resp = jsonify("User updated successfully!")
+                resp.status_code = 200
+                cursor.close()
+                conn.close()
+                return resp
+            except Exception as exception:
+                return jsonify(str(exception))
+        else:
+            return jsonify("Please provide id, name, email and pwd")
+
+@name_space.route("/delete/<int:user_id>")
+class CategoryItem(Resource):
+    def delete(self, user_id):
+        """Function to delete a user from the MySQL database"""
+        try:
+            conn = mysql.connect()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM users WHERE user_id=%s", user_id)
+            conn.commit()
+            cursor.close()
+            conn.close()
+            resp = jsonify("User deleted successfully!")
+            resp.status_code = 200
+            return resp
+        except Exception as exception:
+            return jsonify(str(exception))
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

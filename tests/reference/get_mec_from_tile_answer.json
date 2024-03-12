@@ -1,0 +1,49 @@
+[
+  {
+    "geolocation": [
+      {
+        "tile-id": "031333123201212",
+        "zoom-level": 15
+      },
+      {
+        "tile-id": "031333123201213",
+        "zoom-level": 15
+      },
+      {
+        "tile-id": "031333123201223",
+        "zoom-level": 15
+      },
+      {
+        "tile-id": "031333123202223",
+        "zoom-level": 15
+      }
+    ],
+    "id": 1,
+    "lat": "43.2922071",
+    "lng": "-1.987018,17",
+    "name": "SanSebastian-MEC-Secondary",
+    "organization": "Vicomtech",
+    "props": {},
+    "resources": {
+      "cpu": "12",
+      "gpu": "true",
+      "memory": "16",
+      "storage": "1000\""
+    },
+    "sb_services": [
+      {
+        "description": "Message Broker",
+        "ip": "10.0.20.92",
+        "port": "5673",
+        "service_name": "message-broker"
+      },
+      {
+        "description": "Registration API",
+        "ip": "10.0.20.92",
+        "port": "12346",
+        "service_name": "registration-api"
+      }
+    ]
+  }
+]
+

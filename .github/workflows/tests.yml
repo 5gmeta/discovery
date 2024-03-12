@@ -1,0 +1,123 @@
+name: Deploy discovery module and test it
+on: [push]
+jobs:
+  Deploy-Discovery-and-test:
+    #runs-on: self-hosted
+    runs-on: self-hosted
+    steps:
+
+    - name: Get current repository
+      uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.FIVEGMETATOKEN }}
+        ref: 'main'
+        path: ${{ github.workspace }}/discovery
+
+    - name: Checkout registration repo
+      uses: actions/checkout@v2
+      with:
+        repository: 5gmetadmin/registration
+        token: ${{ secrets.FIVEGMETATOKEN }}
+        path: ${{ github.workspace }}/registration
+        ref: 'main'
+
+
+    - name: Checkout integration_tests repo
+      uses: actions/checkout@v3
+      with:
+        repository: 5gmetadmin/integration_tests
+        token: ${{ secrets.FIVEGMETATOKEN }}
+        path: ${{ github.workspace }}/integration_tests
+
+
+    - name: Checkout dataflow_cloud repo
+      uses: actions/checkout@v3
+      with:
+        repository: 5gmetadmin/dataflow_cloud
+        token: ${{ secrets.FIVEGMETATOKEN }}  
+        ref: 'main'
+        path: ${{ github.workspace }}/dataflow_cloud        
+    
+    - name: Check IP
+      run: curl https://api.ipify.org
+    
+    - name: Get current ip
+      run: |
+        name=`hostname`
+        local="vicomtech"
+        if [[ $name == *"$local"* ]] ; then ipe=`ip route | grep -v default | grep metric | grep enp | grep src | awk '{print $9}'` ; else  ipe=`ip route | grep -v default | grep metric | grep eth0 | grep src | awk '{print $9}' | tail -n +2` ; fi
+        echo $ipe
+    
+    - name: Copy edge database extra stuff
+      working-directory: ${{ github.workspace }}/integration_tests/dataflow_tests/tools
+      run: |
+        cp -r ${{ github.workspace }}/integration_tests/dataflow_tests/tools/utils/registration/edge/database ${{ github.workspace }}/registration/deploy/edge
+        cp -r ${{ github.workspace }}/integration_tests/dataflow_tests/tools/utils/registration/edge/config ${{ github.workspace }}/registration/deploy/edge
+        cp -r ${{ github.workspace }}/integration_tests/dataflow_tests/tools//utils/registration/edge/docker-compose.yaml ${{ github.workspace }}/registration/deploy/edge
+        cp -r ${{ github.workspace }}/dataflow_cloud/src/mysql/dataflow_DB_CLOUD_mysql.sql ${{ github.workspace }}/registration/deploy/edge/database/sql/clouddb.sql
+        rm ${{ github.workspace }}/registration/deploy/edge/compose.yaml
+  
+    #- name: List destination
+    #  run: dest=$(ls ./registration/deploy/edge) ; echo $dest
+    
+    - name: Build edge database
+      working-directory: ${{ github.workspace }}/registration/deploy/edge/database
+      run: |
+        docker-compose down
+        docker-compose build --no-cache
+        docker-compose up -d
+        sleep 60
+
+
+
+    - name: Build edge registration api
+      working-directory: ${{ github.workspace }}/registration/src/edge
+      run:  |
+        sed -i "s/8080/12346/g" swagger_server/__main__.py 
+        docker build -t registrationapi:latest . --no-cache
+      
+    
+    - name: Deploy edge registration api
+      working-directory: ${{ github.workspace }}/registration/deploy/edge
+      run: |
+        docker-compose down
+        docker-compose build --no-cache
+        docker-compose up -d
+        sleep 20
+
+    - name: Deploy discovery service
+      working-directory: ${{ github.workspace }}/discovery/src
+      run: |
+        python -m pip install --upgrade pip
+        sed -i "/\- url\: http\:\/\/5gmeta-platform\.eu\/discovery-api/c\\- url: http\:\/\/127.0.0.1:8282" python-flask-server-generated/swagger_server/swagger/swagger.yaml 
+        sed -i "/\- url\: https\:\/\/5gmeta-platform\.eu\/discovery-api/c\\- url: http\:\/\/127.0.0.1:8282" python-flask-server-generated/swagger_server/swagger/swagger.yaml 
+        docker-compose down
+        docker-compose build --no-cache
+        docker-compose up -d
+        sleep 60
+
+    - name: Run tests
+      working-directory: ${{ github.workspace }}/discovery/tests
+      run: |
+        ./unit_test.sh
+
+    - name: End discovery service
+      working-directory: ${{ github.workspace }}/discovery/src
+      run: |
+        docker-compose down
+
+    - name: End edge registration api
+      working-directory: ${{ github.workspace }}/registration/deploy/edge
+      run: |
+        docker-compose down
+    
+    - name: Stop edge database
+      working-directory: ${{ github.workspace }}/registration/deploy/edge/database
+      run: |
+        docker-compose down
+
+
+
+
+
+

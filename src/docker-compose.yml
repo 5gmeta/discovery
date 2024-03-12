@@ -1,0 +1,47 @@
+# A docker compose to create a MySql persistent database.
+# usefull guide: https://stavshamir.github.io/python/dockerizing-a-flask-mysql-app-with-docker-compose/
+
+version: '3'
+ 
+services:
+
+  db:
+    image: mysql:5.7 
+    container_name: db_discovery
+    
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: discoverydb
+      MYSQL_USER: db_user
+      MYSQL_PASSWORD: db_password
+    ports:
+      - "3308:3309"
+    volumes:
+       - ./data/sql:/docker-entrypoint-initdb.d
+ 
+  app:
+    container_name: discovery-api
+    environment:
+      db_root_password: password
+      db_user: db_user
+      db_passord: db_password
+      db_host: db
+      db_name: discoverydb
+    build: ./python-flask-server-generated #service-flask # build the docker in this folder
+    links:
+      - db
+    depends_on: 
+      - db
+    ports:
+      - "8282:8080"
+
+  # swagger_app:
+  #   container_name: app_swagger_flask
+  #   build: ./python-flask-server # build the docker in this folder
+  #   links:
+  #     - db
+  #   depends_on: 
+  #     - db
+  #   ports:
+  #     - "5001:5000"

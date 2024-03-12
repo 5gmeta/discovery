@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "lat": "43.2922071",
+    "lng": "-1.987018,17",
+    "name": "SanSebastian-MEC-Secondary",
+    "organization": [
+      {
+        "tile-id": "031333123201212",
+        "zoom-level": 15
+      },
+      {
+        "tile-id": "031333123201213",
+        "zoom-level": 15
+      },
+      {
+        "tile-id": "031333123201223",
+        "zoom-level": 15
+      },
+      {
+        "tile-id": "031333123202223",
+        "zoom-level": 15
+      }
+    ]
+  }
+]
